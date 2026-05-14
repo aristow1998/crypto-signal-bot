@@ -1,0 +1,38 @@
+name: Crypto Signal Bot
+
+on:
+  schedule:
+    - cron: '*/6 * * * *'  # Каждые 6 минут (максимум 240 раз в сутки)
+  workflow_dispatch:  # Ручной запуск
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          
+      - name: Install dependencies
+        run: pip install aiohttp pandas matplotlib python-telegram-bot
+        
+      - name: Run bot
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python bot_github.py
+        
+      - name: Save cooldowns
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update cooldowns
+          file_pattern: cooldowns.json
