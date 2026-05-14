@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 from io import BytesIO
 from collections import defaultdict
+from aiohttp import web
 
 import aiohttp
 import numpy as np
