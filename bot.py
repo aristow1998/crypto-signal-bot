@@ -535,5 +535,65 @@ async def main():
         await asyncio.sleep(CHECK_INTERVAL_SECONDS)
 
 
+# ─── ВЕБ-СЕРВЕР ДЛЯ RENDER ─────────────────────────────────
+
+async def health_handler(request):
+    """Эндпоинт для поддержания сервиса активным."""
+    return web.Response(text="OK", status=200)
+
+
+async def run_web_server():
+    """Запуск мини веб-сервера."""
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"🌐 Веб-сервер запущен на порту {port}")
+
+
+async def main():
+    """Главная функция."""
+    logger.info("🤖 Бот запускается...")
+    logger.info(f"📋 Настройки: порог объёма ×{VOLUME_MULTIPLIER}, "
+               f"интервал проверки {CHECK_INTERVAL_SECONDS}с, "
+               f"кулдаун {COOLDOWN_MINUTES} мин")
+
+    # Запускаем веб-сервер
+    await run_web_server()
+
+    # Отправляем стартовое сообщение
+    try:
+        start_msg = (
+            f"🤖 <b>Бот сигналов запущен!</b>\n\n"
+            f"📋 <b>Настройки:</b>\n"
+            f"   • Биржи: Binance + Bybit (фьючерсы)\n"
+            f"   • Порог объёма: ×{VOLUME_MULTIPLIER}\n"
+            f"   • Интервал проверки: {CHECK_INTERVAL_SECONDS} сек\n"
+            f"   • Кулдаун сигнала: {COOLDOWN_MINUTES} мин\n\n"
+            f"⏰ {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC"
+        )
+        await bot.send_message(chat_id=CHAT_ID, text=start_msg, parse_mode=ParseMode.HTML)
+        logger.info("✅ Стартовое сообщение отправлено")
+    except Exception as e:
+        logger.error(f"❌ Не удалось отправить стартовое сообщение: {e}")
+        logger.error("Проверьте TELEGRAM_TOKEN и CHAT_ID!")
+        return
+
+    # Бесконечный цикл
+    while True:
+        try:
+            await run_check()
+        except Exception as e:
+            logger.error(f"❌ Ошибка в цикле проверки: {e}")
+
+        logger.info(f"💤 Ожидание {CHECK_INTERVAL_SECONDS} секунд...")
+        await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+
+
 if __name__ == "__main__":
     asyncio.run(main())
